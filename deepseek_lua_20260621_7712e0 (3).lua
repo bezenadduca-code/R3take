@@ -1,5 +1,68 @@
--- V1PRWARE - Complete Version
+-- V1PRWARE - Complete Final Version with Error Flashing
 print("v1prware loading...")
+
+-- ============================================================
+-- ERROR HANDLER - Flashes errors on screen
+-- ============================================================
+local function flashError(msg)
+    pcall(function()
+        local player = game:GetService("Players").LocalPlayer
+        local gui = player:FindFirstChild("PlayerGui")
+        if not gui then return end
+        
+        local errorGui = Instance.new("ScreenGui")
+        errorGui.Name = "V1PRWARE_Error"
+        errorGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        errorGui.Parent = gui
+        
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 500, 0, 100)
+        frame.Position = UDim2.new(0.5, -250, 0.5, -50)
+        frame.BackgroundColor3 = Color3.fromRGB(30, 0, 0)
+        frame.BackgroundTransparency = 0.15
+        frame.BorderSizePixel = 3
+        frame.BorderColor3 = Color3.fromRGB(255, 50, 50)
+        frame.Parent = errorGui
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = frame
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -20, 1, -20)
+        label.Position = UDim2.new(0, 10, 0, 10)
+        label.Text = "⚠️ V1PRWARE ERROR\n\n" .. tostring(msg):sub(1, 150)
+        label.TextColor3 = Color3.fromRGB(255, 200, 200)
+        label.TextScaled = true
+        label.BackgroundTransparency = 1
+        label.TextWrapped = true
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Font = Enum.Font.GothamBold
+        label.Parent = frame
+        
+        local closeBtn = Instance.new("TextButton")
+        closeBtn.Size = UDim2.new(0, 80, 0, 30)
+        closeBtn.Position = UDim2.new(1, -90, 1, -40)
+        closeBtn.Text = "Dismiss"
+        closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        closeBtn.BorderSizePixel = 0
+        closeBtn.Font = Enum.Font.GothamBold
+        closeBtn.Parent = frame
+        
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 4)
+        closeCorner.Parent = closeBtn
+        
+        closeBtn.MouseButton1Click:Connect(function()
+            errorGui:Destroy()
+        end)
+        
+        task.delay(15, function()
+            pcall(function() errorGui:Destroy() end)
+        end)
+    end)
+end
 
 local success, err = pcall(function()
 
@@ -1278,30 +1341,25 @@ local qte = {
 }
 
 local qteThread = nil
-local qteBtn = nil
 
 local function qteGetButton()
-    if qteBtn and qteBtn.Parent and qteBtn.Parent.Parent then
-        return qteBtn
-    end
-    
     local pg = lp:FindFirstChild("PlayerGui")
     if not pg then return nil end
+    
     local tu = pg:FindFirstChild("TemporaryUI")
     if not tu then return nil end
+    
     local qteUI = tu:FindFirstChild("QTE")
     if not qteUI then return nil end
     
     for _, child in ipairs(qteUI:GetDescendants()) do
         if child.Name == "ActiveButton" and (child:IsA("TextButton") or child:IsA("ImageButton")) then
-            qteBtn = child
             return child
         end
     end
     
     for _, child in ipairs(qteUI:GetDescendants()) do
         if (child:IsA("TextButton") or child:IsA("ImageButton")) and child.Visible then
-            qteBtn = child
             return child
         end
     end
@@ -1355,7 +1413,6 @@ local function qteStop()
         task.cancel(qteThread)
         qteThread = nil 
     end
-    qteBtn = nil
 end
 
 secNosferatu:Toggle({ 
@@ -1387,7 +1444,7 @@ secNosferatu:Slider({
     end 
 })
 
--- BATS AIM ASSIST
+-- BATS AIM ASSIST (Character Snap Method)
 local batsAim = {
     on = false,
     maxDist = 100,
@@ -1572,8 +1629,7 @@ secBatsAim:Slider({
         pcall(function()
             batsAim.maxDist = v
         end)
-    end
-})
+    end})
 
 -- ============================================================
 -- ESP TAB
@@ -1591,39 +1647,22 @@ local esp = {
     maxDistance = 200, transparency = 0.5,
 }
 
--- ============================================================
--- FIXED GENERATOR LABEL (PER-GENERATOR PROGRESS)
--- ============================================================
-
-local genLabels = {}  -- Track labels per generator
+-- GENERATOR LABEL (Per-Generator Progress)
+local genLabels = {}
 
 local function genGetLabel(progress)
-    -- progress = 0, 25, 50, 75, 100
-    local puzzles = math.floor(progress / 25)  -- 0, 1, 2, 3, 4
+    local puzzles = math.floor(progress / 25)
     return string.format("Generator  %d/4  (%d%%)", puzzles, progress)
-end
-
-local function genUpdateLabel(obj)
-    pcall(function()
-        if not obj or not obj.Parent then return end
-        local label = genLabels[obj]
-        if not label then return end
-        
-        local progress = genGetProgress(obj)
-        label.Text = genGetLabel(progress)
-    end)
 end
 
 local function genGetProgress(obj)
     if not obj or not obj.Parent then return 0 end
     
-    -- Check attribute "Progress" (0-100)
     local progress = obj:GetAttribute("Progress")
     if progress and tonumber(progress) then
         return tonumber(progress)
     end
     
-    -- Check IntValue/NumberValue named "Progress"
     for _, child in ipairs(obj:GetChildren()) do
         if child:IsA("IntValue") and child.Name == "Progress" then
             return child.Value
@@ -1633,7 +1672,6 @@ local function genGetProgress(obj)
         end
     end
     
-    -- Check descendants
     for _, d in ipairs(obj:GetDescendants()) do
         if d:IsA("IntValue") and d.Name == "Progress" then
             return d.Value
@@ -1646,11 +1684,37 @@ local function genGetProgress(obj)
     return 0
 end
 
+local function genUpdateLabel(obj)
+    pcall(function()
+        if not obj or not obj.Parent then return end
+        
+        local label = genLabels[obj]
+        if not label then
+            local bb = obj:FindFirstChildWhichIsA("BillboardGui")
+            if bb then
+                label = bb:FindFirstChild("TextLabel")
+                if label then
+                    genLabels[obj] = label
+                end
+            end
+            if not label then return end
+        end
+        
+        local progress = genGetProgress(obj)
+        local puzzles = math.floor(progress / 25)
+        local newText = string.format("Generator  %d/4  (%d%%)", puzzles, progress)
+        
+        if label.Text ~= newText then
+            label.Text = newText
+            label.Visible = true
+        end
+    end)
+end
+
 local function genWatchGenerator(obj)
     pcall(function()
         if not obj then return end
         
-        -- Remove old connections if any
         if obj._genConns then
             for _, conn in ipairs(obj._genConns) do
                 pcall(function() conn:Disconnect() end)
@@ -1660,14 +1724,12 @@ local function genWatchGenerator(obj)
         
         local conns = {}
         
-        -- Watch attribute changes
         table.insert(conns, obj.AttributeChanged:Connect(function(attr)
             if attr == "Progress" or attr == "Completed" or attr == "Done" then
                 genUpdateLabel(obj)
             end
         end))
         
-        -- Watch children (IntValue/NumberValue "Progress")
         local function watchChildren(parent)
             for _, child in ipairs(parent:GetChildren()) do
                 if child:IsA("IntValue") and child.Name == "Progress" then
@@ -1687,7 +1749,6 @@ local function genWatchGenerator(obj)
         end
         watchChildren(obj)
         
-        -- Watch for new children added
         table.insert(conns, obj.ChildAdded:Connect(function(child)
             task.wait(0.1)
             if child:IsA("IntValue") and child.Name == "Progress" then
@@ -1704,7 +1765,6 @@ local function genWatchGenerator(obj)
             end
         end))
         
-        -- Watch for descendants added
         table.insert(conns, obj.DescendantAdded:Connect(function(d)
             task.wait(0.1)
             if d:IsA("IntValue") and d.Name == "Progress" then
@@ -1722,16 +1782,32 @@ local function genWatchGenerator(obj)
         end))
         
         obj._genConns = conns
-        
-        -- Initial update
         genUpdateLabel(obj)
     end)
 end
 
 local function genSetupGenerator(obj, label)
     pcall(function()
+        if not obj or not label then return end
+        
         genLabels[obj] = label
+        label.Text = "Generator  0/4  (0%)"
+        label.Visible = true
+        label.TextSize = 14
+        label.TextColor3 = Color3.fromRGB(255, 200, 50)
+        label.TextStrokeTransparency = 0.2
+        
+        local bb = label.Parent
+        if bb and bb:IsA("BillboardGui") then
+            bb.Enabled = true
+            bb.AlwaysOnTop = true
+            bb.Size = UDim2.new(0, 200, 0, 30)
+            bb.StudsOffset = Vector3.new(0, 4, 0)
+        end
+        
         genWatchGenerator(obj)
+        task.wait(0.1)
+        genUpdateLabel(obj)
     end)
 end
 
@@ -1752,10 +1828,7 @@ local function genClearAll()
     end)
 end
 
--- ============================================================
 -- ESP COLORS
--- ============================================================
-
 local COLORS = {
     Killer = Color3.fromRGB(255,50,50), Survivor = Color3.fromRGB(50,255,50),
     Generator = Color3.fromRGB(255,200,50), Item = Color3.fromRGB(50,200,255),
@@ -1796,9 +1869,13 @@ end
 local function espMakeHighlight(obj, color)
     local hl = Instance.new("Highlight")
     hl.Name = "V1PR_Highlight"
-    hl.FillColor = color; hl.FillTransparency = esp.transparency; hl.OutlineColor = color
-    hl.OutlineTransparency = 0.1; hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee = obj; hl.Parent = obj
+    hl.FillColor = color
+    hl.FillTransparency = esp.transparency
+    hl.OutlineColor = color
+    hl.OutlineTransparency = 0.1
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee = obj
+    hl.Parent = obj
     return hl
 end
 
@@ -1810,15 +1887,26 @@ local function espCreate(obj, color, labelText, isCharacter)
 
         local hl = espMakeHighlight(obj, color)
         local bb = Instance.new("BillboardGui")
-        bb.Adornee = attach; bb.Size = UDim2.new(0,240,0,20)
-        bb.StudsOffset = Vector3.new(0, isCharacter and 3.5 or 3, 0)
-        bb.AlwaysOnTop = true; bb.MaxDistance = esp.maxDistance; bb.Parent = obj
+        bb.Adornee = attach
+        bb.Size = UDim2.new(0, 200, 0, 30)
+        bb.StudsOffset = Vector3.new(0, 4, 0)
+        bb.AlwaysOnTop = true
+        bb.MaxDistance = esp.maxDistance
+        bb.Parent = obj
+        
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1,0,1,0); label.BackgroundTransparency = 1
-        label.Text = labelText or obj.Name; label.TextColor3 = color
-        label.TextStrokeColor3 = Color3.new(0,0,0); label.TextStrokeTransparency = 0.3
-        label.TextSize = 10; label.Font = Enum.Font.GothamBold; label.Parent = bb
-        esp.highlights[obj] = hl; esp.billboards[obj] = bb
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = labelText or obj.Name
+        label.TextColor3 = color
+        label.TextStrokeColor3 = Color3.new(0, 0, 0)
+        label.TextStrokeTransparency = 0.3
+        label.TextSize = 14
+        label.Font = Enum.Font.GothamBold
+        label.Parent = bb
+        
+        esp.highlights[obj] = hl
+        esp.billboards[obj] = bb
 
         if esp.hlMonitorConns[obj] then
             pcall(function() esp.hlMonitorConns[obj]:Disconnect() end)
@@ -1837,7 +1925,7 @@ local function espCreate(obj, color, labelText, isCharacter)
             end
         end)
 
-        -- ===== GENERATOR LABEL SETUP (Per-Generator) =====
+        -- Generator label setup
         if labelText == "Generator" or (not isCharacter and obj.Name == "Generator") then
             genSetupGenerator(obj, label)
         end
@@ -1848,7 +1936,8 @@ local function espCreate(obj, color, labelText, isCharacter)
                 local name = labelText or obj.Name
                 local distText = ""
                 local hpText = ""
-                local myChar = lp.Character; local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                local myChar = lp.Character
+                local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
                 if myRoot then
                     local a = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
                     if a then distText = string.format("%.0f", (a.Position - myRoot.Position).Magnitude) end
@@ -1884,18 +1973,22 @@ local function espCreate(obj, color, labelText, isCharacter)
                             obj._genConns = nil
                         end
                     end
-                    esp.highlights[obj] = nil; esp.billboards[obj] = nil
-                    esp.healthConnections[obj] = nil; esp.hlMonitorConns[obj] = nil
+                    esp.highlights[obj] = nil
+                    esp.billboards[obj] = nil
+                    esp.healthConnections[obj] = nil
+                    esp.hlMonitorConns[obj] = nil
                 end)
             end
         end))
     end)
 end
 
+-- ESP SCAN
 local function espScan()
     pcall(function()
         if not esp.enabled or not lp then return end
-        local myChar = lp.Character; local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local myChar = lp.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
         local myPos = myRoot and myRoot.Position or Vector3.new(0,0,0)
         local toRemove = {}
         for obj in pairs(esp.highlights) do if not obj or not obj.Parent then table.insert(toRemove, obj) end end
@@ -1903,7 +1996,9 @@ local function espScan()
             if esp.highlights[obj] then esp.highlights[obj]:Destroy() end
             if esp.billboards[obj] then esp.billboards[obj]:Destroy() end
             if esp.healthConnections[obj] then esp.healthConnections[obj]:Disconnect() end
-            esp.highlights[obj] = nil; esp.billboards[obj] = nil; esp.healthConnections[obj] = nil
+            esp.highlights[obj] = nil
+            esp.billboards[obj] = nil
+            esp.healthConnections[obj] = nil
         end) end
         local processed = {}
         local function addESP(obj, objType, color, label)
@@ -1944,7 +2039,8 @@ end
 
 local function espStart()
     pcall(function()
-        espClearAll(); esp.enabled = true
+        espClearAll()
+        esp.enabled = true
         if esp.scanThread then task.cancel(esp.scanThread) end
         esp.scanThread = task.spawn(function() while esp.enabled do pcall(espScan); task.wait(0.5) end end)
     end)
@@ -1953,7 +2049,8 @@ end
 local function espStop()
     pcall(function()
         esp.enabled = false
-        if esp.scanThread then task.cancel(esp.scanThread); esp.scanThread = nil end
+        if esp.scanThread then task.cancel(esp.scanThread)
+        esp.scanThread = nil
         espClearAll()
     end)
 end
@@ -1985,8 +2082,11 @@ end
 
 if lp then lp.CharacterAdded:Connect(function() task.wait(2); if esp.enabled then espClearAll(); espStart() end end) end
 
-task.wait(2); espSetupListeners(); if esp.enabled then espStart() end
+task.wait(2)
+espSetupListeners()
+if esp.enabled then espStart() end
 
+-- ESP UI
 local mainSection = tabESP:Section({ Title = "Main Settings", Opened = true })
 
 mainSection:Toggle({ Title="Enable ESP", Type="Checkbox", Flag="espEnabled", Default=esp.enabled,
@@ -2019,6 +2119,7 @@ visSection:Slider({ Title="Highlight Opacity", Flag="espTransparency", Step=0.05
 
 visSection:Button({ Title="Refresh ESP", Callback=function() pcall(function() if esp.enabled then espClearAll(); espStart() end end) end })
 
+-- MINION ESP
 local secMinion = tabESP:Section({ Title = "Minion & Ability ESP", Opened = true })
 
 local mset = { pizza=false, zombie=false, puddle=false, transparency=0.25 }
@@ -2168,7 +2269,9 @@ local musicTracks = {
     JerseyDebth=ghBase.."JerseyDebth.mp3",
 }
 
-local musicList = {}; for k in pairs(musicTracks) do table.insert(musicList, k) end; table.sort(musicList)
+local musicList = {}
+for k in pairs(musicTracks) do table.insert(musicList, k) end
+table.sort(musicList)
 
 local MUSIC_DIR = "v1prware/Music"
 
@@ -2199,7 +2302,8 @@ local function musicFetchAsync(name, cb)
     if musicFetchInFlight[name] then return end
     musicFetchInFlight[name] = true
     task.spawn(function()
-        local asset = musicFetch(name); musicFetchInFlight[name]=nil
+        local asset = musicFetch(name)
+        musicFetchInFlight[name] = nil
         if asset and cb then cb(asset) end
     end)
 end
@@ -2277,7 +2381,7 @@ local tabChar = win:Tab({ Title = "Character", Icon = "user" })
 local secSentinels = tabChar:Section({ Title = "Sentinels", Opened = true })
 
 secSentinels:Button({ Title="Guest1337", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/r3take/Forsakan/refs/heads/main/Guest"))() end) end })
-secSentinels:Button({ Title="Chance", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/bezenadduca-code/V1prwareR3take/refs/heads/main/Chance"))() end) end })
+secSentinels:Button({ Title="Chance", Callback=function() pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/XnXQY5VD"))() end) end })
 secSentinels:Button({ Title="TwoTime", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/r3take/Forsakan/refs/heads/main/viperstab"))() end) end })
 secSentinels:Button({ Title="Jane Doe", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/bezenadduca-code/Ok/refs/heads/main/Jane%20doe"))() end) end })
 
@@ -2299,6 +2403,7 @@ secUIFunctions:Button({ Title = "Close UI", Callback = function()
     end)
 end })
 
+-- CONFIG SHARE
 local secConfigShare = tabInterface:Section({ Title = "Config Share", Opened = true })
 
 local B64CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -2474,47 +2579,8 @@ end) -- End of main pcall
 
 -- Error handling
 if not success then
-    warn("V1PRWARE failed to load: " .. tostring(err))
-    print("V1PRWARE encountered an error: " .. tostring(err))
-    
-    pcall(function()
-        local errorGui = Instance.new("ScreenGui")
-        errorGui.Name = "V1PRWARE_Error"
-        errorGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 450, 0, 120)
-        frame.Position = UDim2.new(0.5, -225, 0.5, -60)
-        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-        frame.BackgroundTransparency = 0.1
-        frame.BorderSizePixel = 2
-        frame.BorderColor3 = Color3.fromRGB(255, 50, 50)
-        frame.Parent = errorGui
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -20, 1, -20)
-        label.Position = UDim2.new(0, 10, 0, 10)
-        label.Text = "⚠️ V1PRWARE Error\n\n" .. tostring(err):sub(1, 150)
-        label.TextColor3 = Color3.fromRGB(255, 200, 200)
-        label.TextScaled = true
-        label.BackgroundTransparency = 1
-        label.TextWrapped = true
-        label.Parent = frame
-        
-        local closeBtn = Instance.new("TextButton")
-        closeBtn.Size = UDim2.new(0, 80, 0, 30)
-        closeBtn.Position = UDim2.new(1, -90, 1, -40)
-        closeBtn.Text = "Dismiss"
-        closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        closeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        closeBtn.BorderSizePixel = 0
-        closeBtn.Parent = frame
-        closeBtn.MouseButton1Click:Connect(function()
-            errorGui:Destroy()
-        end)
-        
-        task.delay(10, function()
-            pcall(function() errorGui:Destroy() end)
-        end)
-    end)
+    local errMsg = tostring(err)
+    warn("V1PRWARE failed to load: " .. errMsg)
+    print("V1PRWARE encountered an error: " .. errMsg)
+    flashError(errMsg)
 end
